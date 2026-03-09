@@ -10,15 +10,25 @@ import subprocess
 class MetodosNumericos:
     def __init__(self):
         self.x = sp.symbols('x')
+
+    def _normalize_func_str(self, func_str: str) -> str:
+        s = func_str.strip()
+        s = s.replace("∗", "*")
+        s = s.replace("×", "*")
+        s = s.replace("^", "**")
+        s = s.replace(",", ".")
+        return s
     
     def parse_function(self, func_str: str) -> Callable:
         """Convierte string de función a función numérica"""
         try:
-            expr = sp.sympify(func_str)
+            normalized = self._normalize_func_str(func_str)
+            expr = sp.sympify(normalized)
             f = sp.lambdify(self.x, expr, 'numpy')
             return f, expr
-        except:
-            raise ValueError("Función no válida")
+        except Exception as e:
+            normalized = self._normalize_func_str(func_str)
+            raise ValueError(f"Función no válida: '{func_str}'. Intenta con: '{normalized}'.") from e
     
     def punto_fijo(self, func_str: str, x0: float, tol: float = 1e-6, max_iter: int = 100, 
                    criterio: str = 'error') -> Tuple[List, str]:
@@ -185,7 +195,7 @@ class MetodosNumericosGUI:
         self.mn = MetodosNumericos()
 
         self.method_var = tk.StringVar(value="punto_fijo")
-        self.func_var = tk.StringVar(value="0.5*(x + 2/x)")
+        self.func_var = tk.StringVar(value="0.5*x+1.0/x")
         self.x0_var = tk.StringVar(value="1")
         self.x1_var = tk.StringVar(value="2")
         self.tol_var = tk.StringVar(value="1e-6")
