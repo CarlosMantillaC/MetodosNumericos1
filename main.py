@@ -37,6 +37,7 @@ class MetodosNumericos:
         tol: float = 1e-6,
         max_iter: int = 100,
         criterio: str = 'error',
+        stop_iter: int | None = None,
         blow_up_limit: float = 1e12,
         nondecrease_patience: int = 8,
     ) -> Tuple[List, str]:
@@ -73,10 +74,7 @@ class MetodosNumericos:
                 })
                 break
             
-            if criterio == 'error':
-                error = abs(x_siguiente - x_actual)
-            elif criterio == 'iteracion':
-                error = i + 1
+            error = abs(x_siguiente - x_actual)
             
             iteraciones.append({
                 'iter': i + 1,
@@ -99,6 +97,12 @@ class MetodosNumericos:
 
                 if nondec_count >= nondecrease_patience:
                     status = "divergio"
+                    break
+
+            elif criterio == 'iteracion':
+                target = stop_iter if stop_iter is not None else max_iter
+                if (i + 1) >= target:
+                    status = "iteraciones"
                     break
             
             x_actual = x_siguiente
@@ -198,6 +202,7 @@ class MetodosNumericos:
 \\usepackage{{amsmath}}
 \\usepackage{{array}}
 \\usepackage{{booktabs}}
+\\usepackage{{longtable}}
 \\begin{{document}}
 
 \\section*{{Método de Aproximaciones Sucesivas (Punto Fijo)}}
@@ -216,18 +221,42 @@ class MetodosNumericos:
 
 \\subsection*{{Proceso iterativo}}
 
-\\begin{{tabular}}{{|c|c|c|c|}}
+\\begin{{longtable}}{{|c|c|c|c|}}
 \\hline
 \\textbf{{Iteración}} & \\textbf{{$x_{{i}}$}} & \\textbf{{$x_{{i+1}}$}} & \\textbf{{Error}} \\\\ \\hline
+\\endfirsthead
+\\hline
+\\textbf{{Iteración}} & \\textbf{{$x_{{i}}$}} & \\textbf{{$x_{{i+1}}$}} & \\textbf{{Error}} \\\\ \\hline
+\\endhead
+\\hline
+\\endfoot
+\\hline
+\\endlastfoot
 """
         
+        def _fmt_num(v, kind: str) -> str:
+            try:
+                if v is None:
+                    return "-"
+                if isinstance(v, (float, np.floating)) and not np.isfinite(v):
+                    return "\\infty" if v > 0 else "-\\infty"
+                if kind == "float":
+                    return f"{float(v):.6f}"
+                if kind == "sci":
+                    return f"{float(v):.2e}"
+                return str(v)
+            except Exception:
+                return str(v)
+
         for it in iteraciones:
-            latex += f"{it['iter']} & {it['x_actual']:.6f} & {it['x_siguiente']:.6f} & {it['error']:.2e} \\\\ \\hline\n"
+            latex += (
+                f"{it['iter']} & {_fmt_num(it['x_actual'], 'float')} & {_fmt_num(it['x_siguiente'], 'float')} & {_fmt_num(it['error'], 'sci')} \\\\ \\hline\n"
+            )
         
         if iteraciones:
-            latex += f"\\end{{tabular}}\n\n"
-            latex += f"\\textbf{{Raíz aproximada:}} ${iteraciones[-1]['x_siguiente']:.6f}$\n"
-            latex += f"\\textbf{{Error final:}} ${iteraciones[-1]['error']:.2e}$\n"
+            latex += f"\\end{{longtable}}\n\n"
+            latex += f"\\textbf{{Último iterado:}} ${_fmt_num(iteraciones[-1]['x_siguiente'], 'float')}$\n"
+            latex += f"\\textbf{{Error final:}} ${_fmt_num(iteraciones[-1]['error'], 'sci')}$\n"
         
         latex += "\n\\end{document}"
         return latex
@@ -438,17 +467,23 @@ class MetodosNumericosGUI:
             out_dir = os.path.dirname(os.path.abspath(tex_path))
             tex_filename = os.path.basename(tex_path)
 
-            proc = subprocess.run(
-                ["pdflatex", "-interaction=nonstopmode", tex_filename],
-                cwd=out_dir,
-                capture_output=True,
-                text=True,
-                check=False,
-            )
+            proc = None
+            for _ in range(2):
+                proc = subprocess.run(
+                    ["pdflatex", "-interaction=nonstopmode", "-halt-on-error", tex_filename],
+                    cwd=out_dir,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                if proc.returncode != 0:
+                    break
 
             pdf_path = os.path.splitext(tex_path)[0] + ".pdf"
-            if proc.returncode != 0 or not os.path.exists(pdf_path):
-                msg = proc.stdout[-2000:] + "\n" + proc.stderr[-2000:]
+            if proc is None or proc.returncode != 0 or not os.path.exists(pdf_path):
+                stdout = "" if proc is None else proc.stdout
+                stderr = "" if proc is None else proc.stderr
+                msg = stdout[-2000:] + "\n" + stderr[-2000:]
                 messagebox.showerror("Error", "Falló la compilación LaTeX.\n\n" + msg)
                 return
 
@@ -464,6 +499,7 @@ class MetodosNumericosGUI:
 \\usepackage{{amsmath}}
 \\usepackage{{array}}
 \\usepackage{{booktabs}}
+\\usepackage{{longtable}}
 \\begin{{document}}
 
 \\section*{{Método de Newton-Raphson}}
@@ -480,16 +516,24 @@ class MetodosNumericosGUI:
 
 \\subsection*{{Proceso iterativo}}
 
-\\begin{{tabular}}{{|c|c|c|c|c|c|}}
+\\begin{{longtable}}{{|c|c|c|c|c|c|}}
 \\hline
 \\textbf{{Iteración}} & \\textbf{{$x_{{i}}$}} & \\textbf{{$f(x_{{i}})$}} & \\textbf{{$f'(x_{{i}})$}} & \\textbf{{$x_{{i+1}}$}} & \\textbf{{Error}} \\\\ \\hline
+\\endfirsthead
+\\hline
+\\textbf{{Iteración}} & \\textbf{{$x_{{i}}$}} & \\textbf{{$f(x_{{i}})$}} & \\textbf{{$f'(x_{{i}})$}} & \\textbf{{$x_{{i+1}}$}} & \\textbf{{Error}} \\\\ \\hline
+\\endhead
+\\hline
+\\endfoot
+\\hline
+\\endlastfoot
 """
         
         for it in iteraciones:
             latex += f"{it['iter']} & {it['x_actual']:.6f} & {it['fx']:.6f} & {it['dfx']:.6f} & {it['x_siguiente']:.6f} & {it['error']:.2e} \\\\ \\hline\n"
         
         if iteraciones:
-            latex += f"\\end{{tabular}}\n\n"
+            latex += f"\\end{{longtable}}\n\n"
             latex += f"\\textbf{{Raíz aproximada:}} ${iteraciones[-1]['x_siguiente']:.6f}$\n"
             latex += f"\\textbf{{Error final:}} ${iteraciones[-1]['error']:.2e}$\n"
         
@@ -503,6 +547,7 @@ class MetodosNumericosGUI:
 \\usepackage{{amsmath}}
 \\usepackage{{array}}
 \\usepackage{{booktabs}}
+\\usepackage{{longtable}}
 \\begin{{document}}
 
 \\section*{{Método de la Secante}}
@@ -519,16 +564,24 @@ class MetodosNumericosGUI:
 
 \\subsection*{{Proceso iterativo}}
 
-\\begin{{tabular}}{{|c|c|c|c|c|c|c|}}
+\\begin{{longtable}}{{|c|c|c|c|c|c|c|}}
 \\hline
 \\textbf{{Iteración}} & \\textbf{{$x_{{i-1}}$}} & \\textbf{{$x_{{i}}$}} & \\textbf{{$f(x_{{i-1}})$}} & \\textbf{{$f(x_{{i}})$}} & \\textbf{{$x_{{i+1}}$}} & \\textbf{{Error}} \\\\ \\hline
+\\endfirsthead
+\\hline
+\\textbf{{Iteración}} & \\textbf{{$x_{{i-1}}$}} & \\textbf{{$x_{{i}}$}} & \\textbf{{$f(x_{{i-1}})$}} & \\textbf{{$f(x_{{i}})$}} & \\textbf{{$x_{{i+1}}$}} & \\textbf{{Error}} \\\\ \\hline
+\\endhead
+\\hline
+\\endfoot
+\\hline
+\\endlastfoot
 """
         
         for it in iteraciones:
             latex += f"{it['iter']} & {it['x_anterior']:.6f} & {it['x_actual']:.6f} & {it['fx_anterior']:.6f} & {it['fx_actual']:.6f} & {it['x_siguiente']:.6f} & {it['error']:.2e} \\\\ \\hline\n"
         
         if iteraciones:
-            latex += f"\\end{{tabular}}\n\n"
+            latex += f"\\end{{longtable}}\n\n"
             latex += f"\\textbf{{Raíz aproximada:}} ${iteraciones[-1]['x_siguiente']:.6f}$\n"
             latex += f"\\textbf{{Error final:}} ${iteraciones[-1]['error']:.2e}$\n"
         
