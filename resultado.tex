@@ -7,7 +7,7 @@
 
 \section*{Método de Aproximaciones Sucesivas (Punto Fijo)}
 
-\textbf{Función:} $g(x) = 0.5*x + 1.0/x$
+\textbf{Función:} $g(x) = exp(x)$
 
 \textbf{Valor inicial:} $x_0 = 1.0$
 
@@ -17,19 +17,20 @@
 
 \textbf{Máximo de iteraciones:} 100
 
+\textbf{Estado:} divergio
+
 \subsection*{Proceso iterativo}
 
 \begin{tabular}{|c|c|c|c|}
 \hline
 \textbf{Iteración} & \textbf{$x_{i}$} & \textbf{$x_{i+1}$} & \textbf{Error} \\ \hline
-1 & 1.000000 & 1.500000 & 5.00e-01 \\ \hline
-2 & 1.500000 & 1.416667 & 8.33e-02 \\ \hline
-3 & 1.416667 & 1.414216 & 2.45e-03 \\ \hline
-4 & 1.414216 & 1.414214 & 2.12e-06 \\ \hline
-5 & 1.414214 & 1.414214 & 1.59e-12 \\ \hline
+1 & 1.000000 & 2.718282 & 1.72e+00 \\ \hline
+2 & 2.718282 & 15.154262 & 1.24e+01 \\ \hline
+3 & 15.154262 & 3814279.104760 & 3.81e+06 \\ \hline
+4 & 3814279.104760 & inf & inf \\ \hline
 \end{tabular}
 
-\textbf{Raíz aproximada:} $1.414214$
-\textbf{Error final:} $1.59e-12$
+\textbf{Raíz aproximada:} $inf$
+\textbf{Error final:} $inf$
 
 \end{document}

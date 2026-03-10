@@ -30,17 +30,48 @@ class MetodosNumericos:
             normalized = self._normalize_func_str(func_str)
             raise ValueError(f"Función no válida: '{func_str}'. Intenta con: '{normalized}'.") from e
     
-    def punto_fijo(self, func_str: str, x0: float, tol: float = 1e-6, max_iter: int = 100, 
-                   criterio: str = 'error') -> Tuple[List, str]:
+    def punto_fijo(
+        self,
+        func_str: str,
+        x0: float,
+        tol: float = 1e-6,
+        max_iter: int = 100,
+        criterio: str = 'error',
+        blow_up_limit: float = 1e12,
+        nondecrease_patience: int = 8,
+    ) -> Tuple[List, str]:
         """Método de aproximaciones sucesivas (punto fijo)"""
         f, expr = self.parse_function(func_str)
         
         iteraciones = []
         x_actual = x0
         error = float('inf')
+        status = "max_iter"
+        nondec_count = 0
+        prev_error = None
         
         for i in range(max_iter):
             x_siguiente = f(x_actual)
+
+            if not np.isfinite(x_siguiente):
+                status = "divergio"
+                iteraciones.append({
+                    'iter': i + 1,
+                    'x_actual': x_actual,
+                    'x_siguiente': x_siguiente,
+                    'error': float('inf')
+                })
+                break
+
+            if abs(x_siguiente) > blow_up_limit:
+                status = "divergio"
+                iteraciones.append({
+                    'iter': i + 1,
+                    'x_actual': x_actual,
+                    'x_siguiente': x_siguiente,
+                    'error': float('inf')
+                })
+                break
             
             if criterio == 'error':
                 error = abs(x_siguiente - x_actual)
@@ -54,12 +85,25 @@ class MetodosNumericos:
                 'error': error
             })
             
-            if criterio == 'error' and error < tol:
-                break
+            if criterio == 'error':
+                if error < tol:
+                    status = "convergio"
+                    break
+
+                if prev_error is not None:
+                    if error >= prev_error:
+                        nondec_count += 1
+                    else:
+                        nondec_count = 0
+                prev_error = error
+
+                if nondec_count >= nondecrease_patience:
+                    status = "divergio"
+                    break
             
             x_actual = x_siguiente
         
-        latex_output = self._latex_punto_fijo(func_str, x0, tol, max_iter, criterio, iteraciones)
+        latex_output = self._latex_punto_fijo(func_str, x0, tol, max_iter, criterio, iteraciones, status)
         return iteraciones, latex_output
     
     def newton_raphson(self, func_str: str, x0: float, tol: float = 1e-6, max_iter: int = 100,
@@ -148,7 +192,7 @@ class MetodosNumericos:
         return iteraciones, latex_output
     
     def _latex_punto_fijo(self, func_str: str, x0: float, tol: float, max_iter: int, 
-                         criterio: str, iteraciones: List) -> str:
+                         criterio: str, iteraciones: List, status: str) -> str:
         latex = f"""
 \\documentclass{{article}}
 \\usepackage{{amsmath}}
@@ -167,6 +211,8 @@ class MetodosNumericos:
 \\textbf{{Criterio de parada:}} {criterio}
 
 \\textbf{{Máximo de iteraciones:}} {max_iter}
+
+\\textbf{{Estado:}} {status}
 
 \\subsection*{{Proceso iterativo}}
 
