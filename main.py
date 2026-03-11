@@ -261,6 +261,102 @@ class MetodosNumericos:
         latex += "\n\\end{document}"
         return latex
 
+    def _latex_newton(self, func_str: str, x0: float, tol: float, max_iter: int,
+                     criterio: str, iteraciones: List) -> str:
+        latex = f"""
+\\documentclass{{article}}
+\\usepackage{{amsmath}}
+\\usepackage{{array}}
+\\usepackage{{booktabs}}
+\\usepackage{{longtable}}
+\\begin{{document}}
+
+\\section*{{Método de Newton-Raphson}}
+
+\\textbf{{Función:}} $f(x) = {sp.sympify(func_str)}$
+
+\\textbf{{Valor inicial:}} $x_0 = {x0}$
+
+\\textbf{{Tolerancia:}} $\\varepsilon = {tol}$
+
+\\textbf{{Criterio de parada:}} {criterio}
+
+\\textbf{{Máximo de iteraciones:}} {max_iter}
+
+\\subsection*{{Proceso iterativo}}
+
+\\begin{{longtable}}{{|c|c|c|c|c|c|}}
+\\hline
+\\textbf{{Iteración}} & \\textbf{{$x_{{i}}$}} & \\textbf{{$f(x_{{i}})$}} & \\textbf{{$f'(x_{{i}})$}} & \\textbf{{$x_{{i+1}}$}} & \\textbf{{Error}} \\\\ \\hline
+\\endfirsthead
+\\hline
+\\textbf{{Iteración}} & \\textbf{{$x_{{i}}$}} & \\textbf{{$f(x_{{i}})$}} & \\textbf{{$f'(x_{{i}})$}} & \\textbf{{$x_{{i+1}}$}} & \\textbf{{Error}} \\\\ \\hline
+\\endhead
+\\hline
+\\endfoot
+\\hline
+\\endlastfoot
+"""
+        
+        for it in iteraciones:
+            latex += f"{it['iter']} & {it['x_actual']:.6f} & {it['fx']:.6f} & {it['dfx']:.6f} & {it['x_siguiente']:.6f} & {it['error']:.2e} \\\\ \\hline\n"
+        
+        if iteraciones:
+            latex += f"\\end{{longtable}}\n\n"
+            latex += f"\\textbf{{Raíz aproximada:}} ${iteraciones[-1]['x_siguiente']:.6f}$\n"
+            latex += f"\\textbf{{Error final:}} ${iteraciones[-1]['error']:.2e}$\n"
+        
+        latex += "\n\\end{document}"
+        return latex
+
+    def _latex_secante(self, func_str: str, x0: float, x1: float, tol: float, max_iter: int,
+                      criterio: str, iteraciones: List) -> str:
+        latex = f"""
+\\documentclass{{article}}
+\\usepackage{{amsmath}}
+\\usepackage{{array}}
+\\usepackage{{booktabs}}
+\\usepackage{{longtable}}
+\\begin{{document}}
+
+\\section*{{Método de la Secante}}
+
+\\textbf{{Función:}} $f(x) = {sp.sympify(func_str)}$
+
+\\textbf{{Valores iniciales:}} $x_0 = {x0}$, $x_1 = {x1}$
+
+\\textbf{{Tolerancia:}} $\\varepsilon = {tol}$
+
+\\textbf{{Criterio de parada:}} {criterio}
+
+\\textbf{{Máximo de iteraciones:}} {max_iter}
+
+\\subsection*{{Proceso iterativo}}
+
+\\begin{{longtable}}{{|c|c|c|c|c|c|c|}}
+\\hline
+\\textbf{{Iteración}} & \\textbf{{$x_{{i-1}}$}} & \\textbf{{$x_{{i}}$}} & \\textbf{{$f(x_{{i-1}})$}} & \\textbf{{$f(x_{{i}})$}} & \\textbf{{$x_{{i+1}}$}} & \\textbf{{Error}} \\\\ \\hline
+\\endfirsthead
+\\hline
+\\textbf{{Iteración}} & \\textbf{{$x_{{i-1}}$}} & \\textbf{{$x_{{i}}$}} & \\textbf{{$f(x_{{i-1}})$}} & \\textbf{{$f(x_{{i}})$}} & \\textbf{{$x_{{i+1}}$}} & \\textbf{{Error}} \\\\ \\hline
+\\endhead
+\\hline
+\\endfoot
+\\hline
+\\endlastfoot
+"""
+        
+        for it in iteraciones:
+            latex += f"{it['iter']} & {it['x_anterior']:.6f} & {it['x_actual']:.6f} & {it['fx_anterior']:.6f} & {it['fx_actual']:.6f} & {it['x_siguiente']:.6f} & {it['error']:.2e} \\\\ \\hline\n"
+        
+        if iteraciones:
+            latex += f"\\end{{longtable}}\n\n"
+            latex += f"\\textbf{{Raíz aproximada:}} ${iteraciones[-1]['x_siguiente']:.6f}$\n"
+            latex += f"\\textbf{{Error final:}} ${iteraciones[-1]['error']:.2e}$\n"
+        
+        latex += "\n\\end{document}"
+        return latex
+
 
 class MetodosNumericosGUI:
     def __init__(self, root: tk.Tk):
@@ -491,102 +587,6 @@ class MetodosNumericosGUI:
             self._open_file(pdf_path)
         except Exception as e:
             messagebox.showerror("Error", str(e))
-    
-    def _latex_newton(self, func_str: str, x0: float, tol: float, max_iter: int,
-                     criterio: str, iteraciones: List) -> str:
-        latex = f"""
-\\documentclass{{article}}
-\\usepackage{{amsmath}}
-\\usepackage{{array}}
-\\usepackage{{booktabs}}
-\\usepackage{{longtable}}
-\\begin{{document}}
-
-\\section*{{Método de Newton-Raphson}}
-
-\\textbf{{Función:}} $f(x) = {sp.sympify(func_str)}$
-
-\\textbf{{Valor inicial:}} $x_0 = {x0}$
-
-\\textbf{{Tolerancia:}} $\\varepsilon = {tol}$
-
-\\textbf{{Criterio de parada:}} {criterio}
-
-\\textbf{{Máximo de iteraciones:}} {max_iter}
-
-\\subsection*{{Proceso iterativo}}
-
-\\begin{{longtable}}{{|c|c|c|c|c|c|}}
-\\hline
-\\textbf{{Iteración}} & \\textbf{{$x_{{i}}$}} & \\textbf{{$f(x_{{i}})$}} & \\textbf{{$f'(x_{{i}})$}} & \\textbf{{$x_{{i+1}}$}} & \\textbf{{Error}} \\\\ \\hline
-\\endfirsthead
-\\hline
-\\textbf{{Iteración}} & \\textbf{{$x_{{i}}$}} & \\textbf{{$f(x_{{i}})$}} & \\textbf{{$f'(x_{{i}})$}} & \\textbf{{$x_{{i+1}}$}} & \\textbf{{Error}} \\\\ \\hline
-\\endhead
-\\hline
-\\endfoot
-\\hline
-\\endlastfoot
-"""
-        
-        for it in iteraciones:
-            latex += f"{it['iter']} & {it['x_actual']:.6f} & {it['fx']:.6f} & {it['dfx']:.6f} & {it['x_siguiente']:.6f} & {it['error']:.2e} \\\\ \\hline\n"
-        
-        if iteraciones:
-            latex += f"\\end{{longtable}}\n\n"
-            latex += f"\\textbf{{Raíz aproximada:}} ${iteraciones[-1]['x_siguiente']:.6f}$\n"
-            latex += f"\\textbf{{Error final:}} ${iteraciones[-1]['error']:.2e}$\n"
-        
-        latex += "\n\\end{document}"
-        return latex
-    
-    def _latex_secante(self, func_str: str, x0: float, x1: float, tol: float, max_iter: int,
-                      criterio: str, iteraciones: List) -> str:
-        latex = f"""
-\\documentclass{{article}}
-\\usepackage{{amsmath}}
-\\usepackage{{array}}
-\\usepackage{{booktabs}}
-\\usepackage{{longtable}}
-\\begin{{document}}
-
-\\section*{{Método de la Secante}}
-
-\\textbf{{Función:}} $f(x) = {sp.sympify(func_str)}$
-
-\\textbf{{Valores iniciales:}} $x_0 = {x0}$, $x_1 = {x1}$
-
-\\textbf{{Tolerancia:}} $\\varepsilon = {tol}$
-
-\\textbf{{Criterio de parada:}} {criterio}
-
-\\textbf{{Máximo de iteraciones:}} {max_iter}
-
-\\subsection*{{Proceso iterativo}}
-
-\\begin{{longtable}}{{|c|c|c|c|c|c|c|}}
-\\hline
-\\textbf{{Iteración}} & \\textbf{{$x_{{i-1}}$}} & \\textbf{{$x_{{i}}$}} & \\textbf{{$f(x_{{i-1}})$}} & \\textbf{{$f(x_{{i}})$}} & \\textbf{{$x_{{i+1}}$}} & \\textbf{{Error}} \\\\ \\hline
-\\endfirsthead
-\\hline
-\\textbf{{Iteración}} & \\textbf{{$x_{{i-1}}$}} & \\textbf{{$x_{{i}}$}} & \\textbf{{$f(x_{{i-1}})$}} & \\textbf{{$f(x_{{i}})$}} & \\textbf{{$x_{{i+1}}$}} & \\textbf{{Error}} \\\\ \\hline
-\\endhead
-\\hline
-\\endfoot
-\\hline
-\\endlastfoot
-"""
-        
-        for it in iteraciones:
-            latex += f"{it['iter']} & {it['x_anterior']:.6f} & {it['x_actual']:.6f} & {it['fx_anterior']:.6f} & {it['fx_actual']:.6f} & {it['x_siguiente']:.6f} & {it['error']:.2e} \\\\ \\hline\n"
-        
-        if iteraciones:
-            latex += f"\\end{{longtable}}\n\n"
-            latex += f"\\textbf{{Raíz aproximada:}} ${iteraciones[-1]['x_siguiente']:.6f}$\n"
-            latex += f"\\textbf{{Error final:}} ${iteraciones[-1]['error']:.2e}$\n"
-        
-        latex += "\n\\end{document}"
-        return latex
 
 def menu():
     mn = MetodosNumericos()

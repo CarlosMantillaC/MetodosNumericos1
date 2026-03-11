@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2026.3.9)  10 MAR 2026 15:56
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2026.3.9)  10 MAR 2026 21:25
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -163,13 +163,41 @@ LaTeX Font Info:    ... okay on input line 7.
 LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 7.
 LaTeX Font Info:    ... okay on input line 7.
 
-Overfull \hbox (5.35298pt too wide) in paragraph at lines 9--9
-[]\OT1/cmr/bx/n/14.4 M^^Setodo de Aprox-i-ma-ciones Suce-si-vas (Punto Fijo) 
+Overfull \hbox (676.89977pt too wide) in alignment at lines 23--26
+ [] [] [] [] [] [] 
+ []
+
+
+Overfull \hbox (676.89977pt too wide) in alignment at lines 26--29
+ [] [] [] [] [] [] 
+ []
+
+
+Overfull \hbox (676.89977pt too wide) in alignment at lines 29--31
+ [] [] [] [] [] [] 
+ []
+
+
+Overfull \hbox (676.89977pt too wide) in alignment at lines 31--33
+ [] [] [] [] [] [] 
+ []
+
+
+Overfull \hbox (676.89977pt too wide) in alignment at lines 33--134
+ [] [] [] [] [] [] 
  []
 
 [1
 
-{/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}] [2] [3] (./resultado.aux)
+{/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}] [2]
+Overfull \hbox (63.74641pt too wide) in paragraph at lines 136--138
+[]\OT1/cmr/bx/n/10 Ra^^S^^Pz aprox-i-mada: $\OT1/cmr/m/n/10 1267650600227894692
+56502214656\OML/cmm/m/it/10 :\OT1/cmr/m/n/10 000000 \OMS/cmsy/m/n/10 ^^@ \OT1/c
+mr/m/n/10 637148554576006\OML/cmm/m/it/10 :\OT1/cmr/m/n/10 125000\OML/cmm/m/it/
+10 j$
+ []
+
+[3] (./resultado.aux)
  ***********
 LaTeX2e <2023-11-01> patch level 1
 L3 programming layer <2024-01-22>
@@ -177,23 +205,24 @@ L3 programming layer <2024-01-22>
  ) 
 Here is how much of TeX's memory you used:
  1385 strings out of 476182
- 20838 string characters out of 5795596
- 2002975 words of memory out of 5000000
+ 20839 string characters out of 5795596
+ 2031975 words of memory out of 5000000
  23438 multiletter control sequences out of 15000+600000
  560041 words of font info for 43 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
- 56i,5n,65p,223b,213s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 56i,5n,65p,229b,213s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb></us
 r/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb></usr/shar
 e/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/share/texl
 ive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi7.pfb></usr/share/texlive/tex
 mf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/share/texlive/texmf-dist
 /fonts/type1/public/amsfonts/cm/cmr7.pfb></usr/share/texlive/texmf-dist/fonts/t
-ype1/public/amsfonts/cm/cmsy10.pfb>
-Output written on resultado.pdf (3 pages, 83187 bytes).
+ype1/public/amsfonts/cm/cmsy10.pfb></usr/share/texlive/texmf-dist/fonts/type1/p
+ublic/amsfonts/cm/cmsy7.pfb>
+Output written on resultado.pdf (3 pages, 95818 bytes).
 PDF statistics:
- 49 PDF objects out of 1000 (max. 8388607)
- 29 compressed objects within 1 object stream
+ 54 PDF objects out of 1000 (max. 8388607)
+ 32 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
  1 words of extra memory for PDF output out of 10000 (max. 10000000)
 
