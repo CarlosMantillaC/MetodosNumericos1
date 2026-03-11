@@ -2,12 +2,13 @@ import numpy as np
 import sympy as sp
 from typing import Callable, Tuple, List
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+from tkinter import filedialog, messagebox
 import os
 import shutil
 import subprocess
 import tempfile
 import webbrowser
+import customtkinter as ctk
 
 
 class MetodosNumericos:
@@ -641,93 +642,123 @@ class MetodosNumericos:
 
 
 class MetodosNumericosGUI:
-    def __init__(self, root: tk.Tk):
-        self.root = root
+    def __init__(self):
+        # Configurar customtkinter
+        ctk.set_appearance_mode("dark")  # Opciones: "dark", "light", "system"
+        ctk.set_default_color_theme("blue")  # Opciones: "blue", "green", "dark-blue"
+        
+        self.root = ctk.CTk()
         self.root.title("Métodos Numéricos")
+        self.root.geometry("800x600")  # Tamaño inicial
 
         self.mn = MetodosNumericos()
 
-        self.method_var = tk.StringVar(value="punto_fijo")
-        self.func_var = tk.StringVar(value="0.5*x+1.0/x")
-        self.x0_var = tk.StringVar(value="1")
-        self.x1_var = tk.StringVar(value="2")
-        self.tol_var = tk.StringVar(value="1e-6")
-        self.max_iter_var = tk.StringVar(value="100")
-        self.criterio_var = tk.StringVar(value="error")
+        self.method_var = ctk.StringVar(value="punto_fijo")
+        self.func_var = ctk.StringVar(value="0.5*x+1.0/x")
+        self.x0_var = ctk.StringVar(value="1")
+        self.x1_var = ctk.StringVar(value="2")
+        self.tol_var = ctk.StringVar(value="1e-6")
+        self.max_iter_var = ctk.StringVar(value="100")
+        self.criterio_var = ctk.StringVar(value="error")
 
         self._build_ui()
         self._on_method_change()
 
     def _build_ui(self):
-        self.root.columnconfigure(0, weight=1)
-        self.root.rowconfigure(1, weight=1)
-
-        frm = ttk.Frame(self.root, padding=12)
-        frm.grid(row=0, column=0, sticky="nsew")
-        frm.columnconfigure(1, weight=1)
-
-        ttk.Label(frm, text="Método:").grid(row=0, column=0, sticky="w")
-        method_cb = ttk.Combobox(
-            frm,
-            textvariable=self.method_var,
+        # Frame principal
+        main_frame = ctk.CTkFrame(self.root)
+        main_frame.pack(pady=20, padx=20, fill="both", expand=True)
+        
+        # Frame de controles
+        control_frame = ctk.CTkFrame(main_frame)
+        control_frame.pack(pady=10, padx=10, fill="x")
+        
+        # Método
+        ctk.CTkLabel(control_frame, text="Método:", font=("Arial", 12, "bold")).grid(row=0, column=0, sticky="w", pady=5)
+        method_cb = ctk.CTkComboBox(
+            control_frame,
+            variable=self.method_var,
             values=["punto_fijo", "newton_raphson", "secante"],
-            state="readonly",
+            width=200
         )
-        method_cb.grid(row=0, column=1, sticky="ew", padx=(8, 0))
+        method_cb.grid(row=0, column=1, sticky="w", pady=5, padx=(10, 0))
         method_cb.bind("<<ComboboxSelected>>", lambda e: self._on_method_change())
-
-        ttk.Label(frm, text="Función:").grid(row=1, column=0, sticky="w", pady=(8, 0))
-        ttk.Entry(frm, textvariable=self.func_var).grid(row=1, column=1, sticky="ew", padx=(8, 0), pady=(8, 0))
-
-        ttk.Label(frm, text="x0:").grid(row=2, column=0, sticky="w", pady=(8, 0))
-        ttk.Entry(frm, textvariable=self.x0_var).grid(row=2, column=1, sticky="ew", padx=(8, 0), pady=(8, 0))
-
-        ttk.Label(frm, text="x1 (secante):").grid(row=3, column=0, sticky="w", pady=(8, 0))
-        self.x1_entry = ttk.Entry(frm, textvariable=self.x1_var)
-        self.x1_entry.grid(row=3, column=1, sticky="ew", padx=(8, 0), pady=(8, 0))
-
-        ttk.Label(frm, text="Tolerancia (ε):").grid(row=4, column=0, sticky="w", pady=(8, 0))
-        ttk.Entry(frm, textvariable=self.tol_var).grid(row=4, column=1, sticky="ew", padx=(8, 0), pady=(8, 0))
-
-        ttk.Label(frm, text="Máx. iteraciones:").grid(row=5, column=0, sticky="w", pady=(8, 0))
-        ttk.Entry(frm, textvariable=self.max_iter_var).grid(row=5, column=1, sticky="ew", padx=(8, 0), pady=(8, 0))
-
-        ttk.Label(frm, text="Criterio de parada:").grid(row=6, column=0, sticky="w", pady=(8, 0))
-        criterio_cb = ttk.Combobox(frm, textvariable=self.criterio_var, values=["error", "iteracion"], state="readonly")
-        criterio_cb.grid(row=6, column=1, sticky="ew", padx=(8, 0), pady=(8, 0))
-
-        btns = ttk.Frame(frm)
-        btns.grid(row=7, column=0, columnspan=2, sticky="ew", pady=(12, 0))
-        btns.columnconfigure(0, weight=1)
-        btns.columnconfigure(1, weight=1)
-
-        ttk.Button(btns, text="Ejecutar", command=self._run).grid(row=0, column=0, sticky="ew")
-        ttk.Button(btns, text="Limpiar", command=self._clear).grid(row=0, column=1, sticky="ew", padx=(8, 0))
-
-        out = ttk.Frame(self.root, padding=(12, 0, 12, 12))
-        out.grid(row=1, column=0, sticky="nsew")
-        out.rowconfigure(0, weight=1)
-        out.columnconfigure(0, weight=1)
-
-        self.output = tk.Text(out, wrap="none")
-        self.output.grid(row=0, column=0, sticky="nsew")
-
-        yscroll = ttk.Scrollbar(out, orient="vertical", command=self.output.yview)
-        yscroll.grid(row=0, column=1, sticky="ns")
-        self.output.configure(yscrollcommand=yscroll.set)
-
-        xscroll = ttk.Scrollbar(out, orient="horizontal", command=self.output.xview)
-        xscroll.grid(row=1, column=0, sticky="ew")
-        self.output.configure(xscrollcommand=xscroll.set)
-
+        
+        # Función
+        ctk.CTkLabel(control_frame, text="Función:", font=("Arial", 12, "bold")).grid(row=1, column=0, sticky="w", pady=5)
+        func_entry = ctk.CTkEntry(control_frame, textvariable=self.func_var, width=200)
+        func_entry.grid(row=1, column=1, sticky="w", pady=5, padx=(10, 0))
+        
+        # x0
+        ctk.CTkLabel(control_frame, text="x0:", font=("Arial", 12, "bold")).grid(row=2, column=0, sticky="w", pady=5)
+        x0_entry = ctk.CTkEntry(control_frame, textvariable=self.x0_var, width=200)
+        x0_entry.grid(row=2, column=1, sticky="w", pady=5, padx=(10, 0))
+        
+        # x1
+        ctk.CTkLabel(control_frame, text="x1 (secante):", font=("Arial", 12, "bold")).grid(row=3, column=0, sticky="w", pady=5)
+        self.x1_entry = ctk.CTkEntry(control_frame, textvariable=self.x1_var, width=200)
+        self.x1_entry.grid(row=3, column=1, sticky="w", pady=5, padx=(10, 0))
+        
+        # Tolerancia
+        ctk.CTkLabel(control_frame, text="Tolerancia (ε):", font=("Arial", 12, "bold")).grid(row=4, column=0, sticky="w", pady=5)
+        tol_entry = ctk.CTkEntry(control_frame, textvariable=self.tol_var, width=200)
+        tol_entry.grid(row=4, column=1, sticky="w", pady=5, padx=(10, 0))
+        
+        # Máximo de iteraciones
+        ctk.CTkLabel(control_frame, text="Máx. iteraciones:", font=("Arial", 12, "bold")).grid(row=5, column=0, sticky="w", pady=5)
+        max_iter_entry = ctk.CTkEntry(control_frame, textvariable=self.max_iter_var, width=200)
+        max_iter_entry.grid(row=5, column=1, sticky="w", pady=5, padx=(10, 0))
+        
+        # Criterio de parada
+        ctk.CTkLabel(control_frame, text="Criterio de parada:", font=("Arial", 12, "bold")).grid(row=6, column=0, sticky="w", pady=5)
+        criterio_cb = ctk.CTkComboBox(
+            control_frame,
+            variable=self.criterio_var,
+            values=["error", "iteracion"],
+            width=200
+        )
+        criterio_cb.grid(row=6, column=1, sticky="w", pady=5, padx=(10, 0))
+        
+        # Botones
+        button_frame = ctk.CTkFrame(control_frame)
+        button_frame.grid(row=7, column=0, columnspan=2, pady=20, sticky="ew")
+        
+        run_button = ctk.CTkButton(
+            button_frame,
+            text="Ejecutar",
+            command=self._run,
+            width=100,
+            height=40
+        )
+        run_button.pack(side="left", padx=5)
+        
+        clear_button = ctk.CTkButton(
+            button_frame,
+            text="Limpiar",
+            command=self._clear,
+            width=100,
+            height=40
+        )
+        clear_button.pack(side="left", padx=5)
+        
+        # Área de salida
+        output_frame = ctk.CTkFrame(main_frame)
+        output_frame.pack(pady=10, padx=10, fill="both", expand=True)
+        
+        ctk.CTkLabel(output_frame, text="Salida LaTeX:", font=("Arial", 14, "bold")).pack(pady=5)
+        
+        # Crear un textbox con scroll usando tkinter Text dentro de CTkScrollableFrame
+        self.output = ctk.CTkTextbox(output_frame, height=300)
+        self.output.pack(pady=5, padx=5, fill="both", expand=True)
+        
         self._last_latex = ""
 
     def _on_method_change(self):
         method = self.method_var.get()
         if method == "secante":
-            self.x1_entry.state(["!disabled"])
+            self.x1_entry.configure(state="normal")
         else:
-            self.x1_entry.state(["disabled"])
+            self.x1_entry.configure(state="disabled")
 
         if method == "punto_fijo":
             if self.func_var.get().strip() in ("", "x**2 - 2", "x**2-2"):
@@ -743,7 +774,7 @@ class MetodosNumericosGUI:
                 self.x1_var.set("2")
 
     def _clear(self):
-        self.output.delete("1.0", "end")
+        self.output.delete("0.0", "end")
         self._last_latex = ""
 
     def _run(self):
@@ -904,9 +935,8 @@ def menu():
 
 if __name__ == '__main__':
     try:
-        root = tk.Tk()
-        app = MetodosNumericosGUI(root)
-        root.mainloop()
+        app = MetodosNumericosGUI()
+        app.root.mainloop()
     except Exception:
         while True:
             menu()

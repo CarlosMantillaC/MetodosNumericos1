@@ -1,2 +1,20 @@
 numpy>=1.21.0
 sympy>=1.9.0
+customtkinter>=5.2.0
+
+# Dependencias para la interfaz gráfica:
+# customtkinter - Interfaz moderna y personalizable
+# tkinter - Viene incluido con Python (requisito para customtkinter)
+
+# Dependencias del sistema que deben instalarse por separado:
+# - LaTeX (TeX Live, MiKTeX, o similar) para generar PDFs
+#   Ubuntu/Debian: sudo apt-get install texlive-full
+#   Fedora: sudo dnf install texlive-scheme-full
+#   macOS: brew install --cask mactex
+#   Windows: descargar e instalar MiKTeX desde https://miktex.org/
+
+# Notas de instalación:
+# 1. Crear entorno virtual: python -m venv .venv
+# 2. Activar entorno: source .venv/bin/activate (Linux/Mac) o .venv\Scripts\activate (Windows)
+# 3. Instalar dependencias: pip install -r requirements.txt
+# 4. Ejecutar: python main.py
