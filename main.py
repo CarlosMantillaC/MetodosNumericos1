@@ -111,7 +111,8 @@ class MetodosNumericos:
         return iteraciones, latex_output
     
     def newton_raphson(self, func_str: str, x0: float, tol: float = 1e-6, max_iter: int = 100,
-                      criterio: str = 'error') -> Tuple[List, str]:
+                      criterio: str = 'error', blow_up_limit: float = 1e12,
+                      nondecrease_patience: int = 8, deriv_eps: float = 1e-14) -> Tuple[List, str]:
         """Método de Newton-Raphson"""
         f, expr = self.parse_function(func_str)
         f_prime = sp.diff(expr, self.x)
@@ -120,20 +121,77 @@ class MetodosNumericos:
         iteraciones = []
         x_actual = x0
         error = float('inf')
+        status = "max_iter"
+        nondec_count = 0
+        prev_error = None
         
         for i in range(max_iter):
             fx = f(x_actual)
             dfx = df(x_actual)
-            
-            if dfx == 0:
+
+            if np.iscomplexobj(fx) or np.iscomplexobj(dfx):
+                status = "divergio"
+                iteraciones.append({
+                    'iter': i + 1,
+                    'x_actual': x_actual,
+                    'fx': fx,
+                    'dfx': dfx,
+                    'x_siguiente': float('nan'),
+                    'error': float('inf')
+                })
                 break
-            
-            x_siguiente = x_actual - fx/dfx
-            
-            if criterio == 'error':
-                error = abs(x_siguiente - x_actual)
-            elif criterio == 'iteracion':
-                error = i + 1
+
+            if not np.isfinite(fx) or not np.isfinite(dfx):
+                status = "divergio"
+                iteraciones.append({
+                    'iter': i + 1,
+                    'x_actual': x_actual,
+                    'fx': fx,
+                    'dfx': dfx,
+                    'x_siguiente': float('nan'),
+                    'error': float('inf')
+                })
+                break
+
+            if abs(dfx) < deriv_eps:
+                status = "divergio"
+                iteraciones.append({
+                    'iter': i + 1,
+                    'x_actual': x_actual,
+                    'fx': fx,
+                    'dfx': dfx,
+                    'x_siguiente': x_actual,
+                    'error': float('inf')
+                })
+                break
+
+            x_siguiente = x_actual - fx / dfx
+
+            if np.iscomplexobj(x_siguiente):
+                status = "divergio"
+                iteraciones.append({
+                    'iter': i + 1,
+                    'x_actual': x_actual,
+                    'fx': fx,
+                    'dfx': dfx,
+                    'x_siguiente': x_siguiente,
+                    'error': float('inf')
+                })
+                break
+
+            if not np.isfinite(x_siguiente) or abs(x_siguiente) > blow_up_limit:
+                status = "divergio"
+                iteraciones.append({
+                    'iter': i + 1,
+                    'x_actual': x_actual,
+                    'fx': fx,
+                    'dfx': dfx,
+                    'x_siguiente': x_siguiente,
+                    'error': float('inf')
+                })
+                break
+
+            error = abs(x_siguiente - x_actual)
             
             iteraciones.append({
                 'iter': i + 1,
@@ -144,12 +202,29 @@ class MetodosNumericos:
                 'error': error
             })
             
-            if criterio == 'error' and error < tol:
-                break
+            if criterio == 'error':
+                if error < tol:
+                    status = "convergio"
+                    break
+
+                if prev_error is not None:
+                    if error >= prev_error:
+                        nondec_count += 1
+                    else:
+                        nondec_count = 0
+                prev_error = error
+
+                if nondec_count >= nondecrease_patience:
+                    status = "divergio"
+                    break
+            elif criterio == 'iteracion':
+                if (i + 1) >= max_iter:
+                    status = "iteraciones"
+                    break
             
             x_actual = x_siguiente
         
-        latex_output = self._latex_newton(func_str, x0, tol, max_iter, criterio, iteraciones)
+        latex_output = self._latex_newton(func_str, x0, tol, max_iter, criterio, iteraciones, status)
         return iteraciones, latex_output
     
     def secante(self, func_str: str, x0: float, x1: float, tol: float = 1e-6, 
@@ -197,6 +272,7 @@ class MetodosNumericos:
     
     def _latex_punto_fijo(self, func_str: str, x0: float, tol: float, max_iter: int, 
                          criterio: str, iteraciones: List, status: str) -> str:
+        func_latex = sp.latex(sp.sympify(self._normalize_func_str(func_str)))
         latex = f"""
 \\documentclass{{article}}
 \\usepackage{{amsmath}}
@@ -207,7 +283,7 @@ class MetodosNumericos:
 
 \\section*{{Método de Aproximaciones Sucesivas (Punto Fijo)}}
 
-\\textbf{{Función:}} $g(x) = {sp.sympify(func_str)}$
+\\textbf{{Función:}} $g(x) = {func_latex}$
 
 \\textbf{{Valor inicial:}} $x_0 = {x0}$
 
@@ -238,6 +314,19 @@ class MetodosNumericos:
             try:
                 if v is None:
                     return "-"
+                if isinstance(v, str) and ("j" in v or "J" in v):
+                    s = v.strip().strip("()")
+                    s = s.replace("J", "j")
+                    s = s.replace("j", "")
+                    return s + "\\,i"
+                if isinstance(v, (complex, np.complexfloating)) or np.iscomplexobj(v):
+                    c = complex(v)
+                    sign = "+" if c.imag >= 0 else "-"
+                    if kind == "float":
+                        return f"{c.real:.6f} {sign} {abs(c.imag):.2e}\\,i"
+                    if kind == "sci":
+                        return f"{c.real:.2e} {sign} {abs(c.imag):.2e}\\,i"
+                    return f"{c.real} {sign} {abs(c.imag)} i"
                 if isinstance(v, (float, np.floating)) and not np.isfinite(v):
                     return "\\infty" if v > 0 else "-\\infty"
                 if kind == "float":
@@ -250,7 +339,7 @@ class MetodosNumericos:
 
         for it in iteraciones:
             latex += (
-                f"{it['iter']} & {_fmt_num(it['x_actual'], 'float')} & {_fmt_num(it['x_siguiente'], 'float')} & {_fmt_num(it['error'], 'sci')} \\\\ \\hline\n"
+                f"{it['iter']} & ${_fmt_num(it['x_actual'], 'float')}$ & ${_fmt_num(it['x_siguiente'], 'float')}$ & ${_fmt_num(it['error'], 'sci')}$ \\\\ \\hline\n"
             )
         
         if iteraciones:
@@ -262,7 +351,8 @@ class MetodosNumericos:
         return latex
 
     def _latex_newton(self, func_str: str, x0: float, tol: float, max_iter: int,
-                     criterio: str, iteraciones: List) -> str:
+                     criterio: str, iteraciones: List, status: str) -> str:
+        func_latex = sp.latex(sp.sympify(self._normalize_func_str(func_str)))
         latex = f"""
 \\documentclass{{article}}
 \\usepackage{{amsmath}}
@@ -273,7 +363,7 @@ class MetodosNumericos:
 
 \\section*{{Método de Newton-Raphson}}
 
-\\textbf{{Función:}} $f(x) = {sp.sympify(func_str)}$
+\\textbf{{Función:}} $f(x) = {func_latex}$
 
 \\textbf{{Valor inicial:}} $x_0 = {x0}$
 
@@ -282,6 +372,8 @@ class MetodosNumericos:
 \\textbf{{Criterio de parada:}} {criterio}
 
 \\textbf{{Máximo de iteraciones:}} {max_iter}
+
+\\textbf{{Estado:}} {status}
 
 \\subsection*{{Proceso iterativo}}
 
@@ -298,19 +390,36 @@ class MetodosNumericos:
 \\endlastfoot
 """
         
+        def _fmt_num(v, kind: str) -> str:
+            try:
+                if v is None:
+                    return "-"
+                if isinstance(v, (float, np.floating)) and not np.isfinite(v):
+                    return "\\infty" if v > 0 else "-\\infty"
+                if kind == "float":
+                    return f"{float(v):.6f}"
+                if kind == "sci":
+                    return f"{float(v):.2e}"
+                return str(v)
+            except Exception:
+                return str(v)
+
         for it in iteraciones:
-            latex += f"{it['iter']} & {it['x_actual']:.6f} & {it['fx']:.6f} & {it['dfx']:.6f} & {it['x_siguiente']:.6f} & {it['error']:.2e} \\\\ \\hline\n"
+            latex += (
+                f"{it['iter']} & ${_fmt_num(it['x_actual'], 'float')}$ & ${_fmt_num(it['fx'], 'float')}$ & ${_fmt_num(it['dfx'], 'float')}$ & ${_fmt_num(it['x_siguiente'], 'float')}$ & ${_fmt_num(it['error'], 'sci')}$ \\\\ \\hline\n"
+            )
         
         if iteraciones:
             latex += f"\\end{{longtable}}\n\n"
-            latex += f"\\textbf{{Raíz aproximada:}} ${iteraciones[-1]['x_siguiente']:.6f}$\n"
-            latex += f"\\textbf{{Error final:}} ${iteraciones[-1]['error']:.2e}$\n"
+            latex += f"\\textbf{{Último iterado:}} ${_fmt_num(iteraciones[-1]['x_siguiente'], 'float')}$\n"
+            latex += f"\\textbf{{Error final:}} ${_fmt_num(iteraciones[-1]['error'], 'sci')}$\n"
         
         latex += "\n\\end{document}"
         return latex
 
     def _latex_secante(self, func_str: str, x0: float, x1: float, tol: float, max_iter: int,
                       criterio: str, iteraciones: List) -> str:
+        func_latex = sp.latex(sp.sympify(self._normalize_func_str(func_str)))
         latex = f"""
 \\documentclass{{article}}
 \\usepackage{{amsmath}}
@@ -321,7 +430,7 @@ class MetodosNumericos:
 
 \\section*{{Método de la Secante}}
 
-\\textbf{{Función:}} $f(x) = {sp.sympify(func_str)}$
+\\textbf{{Función:}} $f(x) = {func_latex}$
 
 \\textbf{{Valores iniciales:}} $x_0 = {x0}$, $x_1 = {x1}$
 
@@ -347,7 +456,7 @@ class MetodosNumericos:
 """
         
         for it in iteraciones:
-            latex += f"{it['iter']} & {it['x_anterior']:.6f} & {it['x_actual']:.6f} & {it['fx_anterior']:.6f} & {it['fx_actual']:.6f} & {it['x_siguiente']:.6f} & {it['error']:.2e} \\\\ \\hline\n"
+            latex += f"{it['iter']} & ${it['x_anterior']:.6f}$ & ${it['x_actual']:.6f}$ & ${it['fx_anterior']:.6f}$ & ${it['fx_actual']:.6f}$ & ${it['x_siguiente']:.6f}$ & ${it['error']:.2e}$ \\\\ \\hline\n"
         
         if iteraciones:
             latex += f"\\end{{longtable}}\n\n"
