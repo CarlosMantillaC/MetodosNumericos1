@@ -228,7 +228,8 @@ class MetodosNumericos:
         return iteraciones, latex_output
     
     def secante(self, func_str: str, x0: float, x1: float, tol: float = 1e-6, 
-                max_iter: int = 100, criterio: str = 'error') -> Tuple[List, str]:
+                max_iter: int = 100, criterio: str = 'error', blow_up_limit: float = 1e12,
+                nondecrease_patience: int = 8) -> Tuple[List, str]:
         """Método de la secante"""
         f, expr = self.parse_function(func_str)
         
@@ -236,15 +237,58 @@ class MetodosNumericos:
         x_anterior = x0
         x_actual = x1
         error = float('inf')
+        status = "max_iter"
+        prev_error = None
+        nondec_count = 0
         
         for i in range(max_iter):
             fx_anterior = f(x_anterior)
             fx_actual = f(x_actual)
             
+            if np.iscomplexobj(fx_anterior) or np.iscomplexobj(fx_actual):
+                status = "divergio"
+                iteraciones.append({
+                    'iter': i + 1,
+                    'x_anterior': x_anterior,
+                    'x_actual': x_actual,
+                    'fx_anterior': fx_anterior,
+                    'fx_actual': fx_actual,
+                    'x_siguiente': float('nan'),
+                    'error': float('inf')
+                })
+                break
+            
             if fx_actual - fx_anterior == 0:
+                status = "divergio"
                 break
             
             x_siguiente = x_actual - fx_actual * (x_actual - x_anterior) / (fx_actual - fx_anterior)
+            
+            if np.iscomplexobj(x_siguiente):
+                status = "divergio"
+                iteraciones.append({
+                    'iter': i + 1,
+                    'x_anterior': x_anterior,
+                    'x_actual': x_actual,
+                    'fx_anterior': fx_anterior,
+                    'fx_actual': fx_actual,
+                    'x_siguiente': x_siguiente,
+                    'error': float('inf')
+                })
+                break
+
+            if not np.isfinite(x_siguiente) or abs(x_siguiente) > blow_up_limit:
+                status = "divergio"
+                iteraciones.append({
+                    'iter': i + 1,
+                    'x_anterior': x_anterior,
+                    'x_actual': x_actual,
+                    'fx_anterior': fx_anterior,
+                    'fx_actual': fx_actual,
+                    'x_siguiente': x_siguiente,
+                    'error': float('inf')
+                })
+                break
             
             if criterio == 'error':
                 error = abs(x_siguiente - x_actual)
@@ -261,13 +305,30 @@ class MetodosNumericos:
                 'error': error
             })
             
-            if criterio == 'error' and error < tol:
-                break
+            if criterio == 'error':
+                if error < tol:
+                    status = "convergio"
+                    break
+
+                if prev_error is not None:
+                    if error >= prev_error:
+                        nondec_count += 1
+                    else:
+                        nondec_count = 0
+                prev_error = error
+
+                if nondec_count >= nondecrease_patience:
+                    status = "divergio"
+                    break
+            elif criterio == 'iteracion':
+                if (i + 1) >= max_iter:
+                    status = "iteraciones"
+                    break
             
             x_anterior = x_actual
             x_actual = x_siguiente
         
-        latex_output = self._latex_secante(func_str, x0, x1, tol, max_iter, criterio, iteraciones)
+        latex_output = self._latex_secante(func_str, x0, x1, tol, max_iter, criterio, iteraciones, status)
         return iteraciones, latex_output
     
     def _latex_punto_fijo(self, func_str: str, x0: float, tol: float, max_iter: int, 
@@ -418,7 +479,7 @@ class MetodosNumericos:
         return latex
 
     def _latex_secante(self, func_str: str, x0: float, x1: float, tol: float, max_iter: int,
-                      criterio: str, iteraciones: List) -> str:
+                      criterio: str, iteraciones: List, status: str) -> str:
         func_latex = sp.latex(sp.sympify(self._normalize_func_str(func_str)))
         latex = f"""
 \\documentclass{{article}}
@@ -440,6 +501,8 @@ class MetodosNumericos:
 
 \\textbf{{Máximo de iteraciones:}} {max_iter}
 
+\\textbf{{Estado:}} {status}
+
 \\subsection*{{Proceso iterativo}}
 
 \\begin{{longtable}}{{|c|c|c|c|c|c|c|}}
@@ -454,14 +517,45 @@ class MetodosNumericos:
 \\hline
 \\endlastfoot
 """
+
+        def _fmt_num(v, kind: str) -> str:
+            try:
+                if v is None:
+                    return "-"
+                if isinstance(v, str) and ("j" in v or "J" in v):
+                    s = v.strip().strip("()")
+                    s = s.replace("J", "j")
+                    s = s.replace("j", "")
+                    return s + "\\,i"
+                if isinstance(v, (complex, np.complexfloating)) or np.iscomplexobj(v):
+                    c = complex(v)
+                    sign = "+" if c.imag >= 0 else "-"
+                    if kind == "float":
+                        return f"{c.real:.6f} {sign} {abs(c.imag):.2e}\\,i"
+                    if kind == "sci":
+                        return f"{c.real:.2e} {sign} {abs(c.imag):.2e}\\,i"
+                    return f"{c.real} {sign} {abs(c.imag)} i"
+                if isinstance(v, (float, np.floating)) and not np.isfinite(v):
+                    return "\\infty" if v > 0 else "-\\infty"
+                if kind == "float":
+                    return f"{float(v):.6f}"
+                if kind == "sci":
+                    return f"{float(v):.2e}"
+                return str(v)
+            except Exception:
+                return str(v)
         
         for it in iteraciones:
-            latex += f"{it['iter']} & ${it['x_anterior']:.6f}$ & ${it['x_actual']:.6f}$ & ${it['fx_anterior']:.6f}$ & ${it['fx_actual']:.6f}$ & ${it['x_siguiente']:.6f}$ & ${it['error']:.2e}$ \\\\ \\hline\n"
+            latex += (
+                f"{it['iter']} & ${_fmt_num(it['x_anterior'], 'float')}$ & ${_fmt_num(it['x_actual'], 'float')}$ "
+                f"& ${_fmt_num(it['fx_anterior'], 'float')}$ & ${_fmt_num(it['fx_actual'], 'float')}$ "
+                f"& ${_fmt_num(it['x_siguiente'], 'float')}$ & ${_fmt_num(it['error'], 'sci')}$ \\\\ \\hline\n"
+            )
         
         if iteraciones:
             latex += f"\\end{{longtable}}\n\n"
-            latex += f"\\textbf{{Raíz aproximada:}} ${iteraciones[-1]['x_siguiente']:.6f}$\n"
-            latex += f"\\textbf{{Error final:}} ${iteraciones[-1]['error']:.2e}$\n"
+            latex += f"\\textbf{{Raíz aproximada:}} ${_fmt_num(iteraciones[-1]['x_siguiente'], 'float')}$\n"
+            latex += f"\\textbf{{Error final:}} ${_fmt_num(iteraciones[-1]['error'], 'sci')}$\n"
         
         latex += "\n\\end{document}"
         return latex
