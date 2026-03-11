@@ -7,6 +7,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import webbrowser
 
 
 class MetodosNumericos:
@@ -832,6 +833,12 @@ class MetodosNumericosGUI:
                     return
 
                 shutil.copyfile(tmp_pdf, pdf_path)
+
+                # Abrir el PDF automáticamente
+                try:
+                    webbrowser.open(f"file://{os.path.abspath(pdf_path)}")
+                except Exception as e:
+                    print(f"No se pudo abrir el PDF automáticamente: {e}")
 
             messagebox.showinfo("OK", f"PDF generado en: {pdf_path}")
         except Exception as e:
