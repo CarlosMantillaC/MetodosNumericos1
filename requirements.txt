@@ -8,7 +8,7 @@ customtkinter>=5.2.0
 
 # Dependencias del sistema que deben instalarse por separado:
 # - LaTeX (TeX Live, MiKTeX, o similar) para generar PDFs
-#   Ubuntu/Debian: sudo apt-get install texlive-full
+#   Ubuntu/Debian: sudo apt-get install texlive
 #   Fedora: sudo dnf install texlive-scheme-full
 #   macOS: brew install --cask mactex
 #   Windows: descargar e instalar MiKTeX desde https://miktex.org/

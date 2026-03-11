@@ -1,7 +1,6 @@
 import numpy as np
 import sympy as sp
 from typing import Callable, Tuple, List
-import tkinter as tk
 from tkinter import filedialog, messagebox
 import os
 import shutil
