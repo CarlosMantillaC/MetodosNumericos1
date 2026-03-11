@@ -76,38 +76,56 @@ class MetodosNumericos:
                 })
                 break
 
-            error = abs(x_siguiente - x_actual)
-
+            # Calcular error real para detección de divergencia
+            error_real = abs(x_siguiente - x_actual)
+            
             iteraciones.append({
                 'iter': i + 1,
                 'x_actual': x_actual,
                 'x_siguiente': x_siguiente,
-                'error': error
+                'error': error_real if criterio == 'error' else i + 1
             })
 
             if criterio == 'error':
-                if error < tol:
+                if error_real < tol:
                     status = "convergio"
                     break
 
                 if prev_error is not None:
-                    if error >= prev_error:
+                    if error_real >= prev_error:
                         nondec_count += 1
                     else:
                         nondec_count = 0
-                prev_error = error
+                prev_error = error_real
 
                 if nondec_count >= nondecrease_patience:
                     status = "divergio"
                     break
-
             elif criterio == 'iteracion':
-                target = stop_iter if stop_iter is not None else max_iter
-                if (i + 1) >= target:
+                # Cuando el criterio es iteracion, usamos el error real para detectar divergencia
+                if prev_error is not None:
+                    # Si el error es cero o muy pequeño, no lo contamos como no-disminución (convergencia perfecta)
+                    if error_real <= 1e-15:  # Umbral para convergencia numérica
+                        nondec_count = 0  # Reiniciar contador, convergencia perfecta
+                    elif error_real >= prev_error:
+                        nondec_count += 1
+                    else:
+                        nondec_count = 0
+                prev_error = error_real
+
+                if nondec_count >= nondecrease_patience:
+                    status = "divergio"
+                    break
+                
+                if (i + 1) >= max_iter:
                     status = "iteraciones"
                     break
 
             x_actual = x_siguiente
+        
+        # Si completó todas las iteraciones sin otro estado, marcar como completado
+        if status == "max_iter" and criterio == "iteracion":
+            status = "iteraciones"
 
         latex_output = self._latex_punto_fijo(func_str, x0, tol, max_iter, criterio, iteraciones, status)
         return iteraciones, latex_output
@@ -193,38 +211,58 @@ class MetodosNumericos:
                 })
                 break
 
-            error = abs(x_siguiente - x_actual)
-
+            # Calcular error real para detección de divergencia
+            error_real = abs(x_siguiente - x_actual)
+            
             iteraciones.append({
                 'iter': i + 1,
                 'x_actual': x_actual,
                 'fx': fx,
                 'dfx': dfx,
                 'x_siguiente': x_siguiente,
-                'error': error
+                'error': error_real if criterio == 'error' else i + 1
             })
 
             if criterio == 'error':
-                if error < tol:
+                if error_real < tol:
                     status = "convergio"
                     break
 
                 if prev_error is not None:
-                    if error >= prev_error:
+                    if error_real >= prev_error:
                         nondec_count += 1
                     else:
                         nondec_count = 0
-                prev_error = error
+                prev_error = error_real
 
                 if nondec_count >= nondecrease_patience:
                     status = "divergio"
                     break
             elif criterio == 'iteracion':
+                # Cuando el criterio es iteracion, usamos el error real para detectar divergencia
+                if prev_error is not None:
+                    # Si el error es cero o muy pequeño, no lo contamos como no-disminución (convergencia perfecta)
+                    if error_real <= 1e-15:  # Umbral para convergencia numérica
+                        nondec_count = 0  # Reiniciar contador, convergencia perfecta
+                    elif error_real >= prev_error:
+                        nondec_count += 1
+                    else:
+                        nondec_count = 0
+                prev_error = error_real
+
+                if nondec_count >= nondecrease_patience:
+                    status = "divergio"
+                    break
+                
                 if (i + 1) >= max_iter:
                     status = "iteraciones"
                     break
 
             x_actual = x_siguiente
+        
+        # Si completó todas las iteraciones sin otro estado, marcar como completado
+        if status == "max_iter" and criterio == "iteracion":
+            status = "iteraciones"
 
         latex_output = self._latex_newton(func_str, x0, tol, max_iter, criterio, iteraciones, status)
         return iteraciones, latex_output
@@ -260,40 +298,59 @@ class MetodosNumericos:
                 })
                 break
 
+            # Calcular x_siguiente (manejando división por cero)
             if fx_actual - fx_anterior == 0:
-                status = "divergio"
-                break
+                if criterio == 'iteracion':
+                    # Cuando el criterio es iteracion y hay división por cero,
+                    # simplemente continuamos con el valor actual
+                    x_siguiente = x_actual
+                    error_real = 0.0  # No hay cambio, error es cero
+                else:
+                    status = "divergio"
+                    iteraciones.append({
+                        'iter': i + 1,
+                        'x_anterior': x_anterior,
+                        'x_actual': x_actual,
+                        'fx_anterior': fx_anterior,
+                        'fx_actual': fx_actual,
+                        'x_siguiente': float('nan'),
+                        'error': float('inf')
+                    })
+                    break
+            else:
+                x_siguiente = x_actual - fx_actual * (x_actual - x_anterior) / (fx_actual - fx_anterior)
 
-            x_siguiente = x_actual - fx_actual * (x_actual - x_anterior) / (fx_actual - fx_anterior)
+                if np.iscomplexobj(x_siguiente):
+                    status = "divergio"
+                    iteraciones.append({
+                        'iter': i + 1,
+                        'x_anterior': x_anterior,
+                        'x_actual': x_actual,
+                        'fx_anterior': fx_anterior,
+                        'fx_actual': fx_actual,
+                        'x_siguiente': x_siguiente,
+                        'error': float('inf')
+                    })
+                    break
 
-            if np.iscomplexobj(x_siguiente):
-                status = "divergio"
-                iteraciones.append({
-                    'iter': i + 1,
-                    'x_anterior': x_anterior,
-                    'x_actual': x_actual,
-                    'fx_anterior': fx_anterior,
-                    'fx_actual': fx_actual,
-                    'x_siguiente': x_siguiente,
-                    'error': float('inf')
-                })
-                break
+                if not np.isfinite(x_siguiente) or abs(x_siguiente) > blow_up_limit:
+                    status = "divergio"
+                    iteraciones.append({
+                        'iter': i + 1,
+                        'x_anterior': x_anterior,
+                        'x_actual': x_actual,
+                        'fx_anterior': fx_anterior,
+                        'fx_actual': fx_actual,
+                        'x_siguiente': x_siguiente,
+                        'error': float('inf')
+                    })
+                    break
 
-            if not np.isfinite(x_siguiente) or abs(x_siguiente) > blow_up_limit:
-                status = "divergio"
-                iteraciones.append({
-                    'iter': i + 1,
-                    'x_anterior': x_anterior,
-                    'x_actual': x_actual,
-                    'fx_anterior': fx_anterior,
-                    'fx_actual': fx_actual,
-                    'x_siguiente': x_siguiente,
-                    'error': float('inf')
-                })
-                break
-
+                # Calcular error real para detección de divergencia
+                error_real = abs(x_siguiente - x_actual)
+            
             if criterio == 'error':
-                error = abs(x_siguiente - x_actual)
+                error = error_real
             elif criterio == 'iteracion':
                 error = i + 1
 
@@ -323,12 +380,31 @@ class MetodosNumericos:
                     status = "divergio"
                     break
             elif criterio == 'iteracion':
+                # Cuando el criterio es iteracion, usamos el error real para detectar divergencia
+                if prev_error is not None:
+                    # Si el error es cero o muy pequeño, no lo contamos como no-disminución (convergencia perfecta)
+                    if error_real <= 1e-15:  # Umbral para convergencia numérica
+                        nondec_count = 0  # Reiniciar contador, convergencia perfecta
+                    elif error_real >= prev_error:
+                        nondec_count += 1
+                    else:
+                        nondec_count = 0
+                prev_error = error_real
+
+                if nondec_count >= nondecrease_patience:
+                    status = "divergio"
+                    break
+                
                 if (i + 1) >= max_iter:
                     status = "iteraciones"
                     break
 
             x_anterior = x_actual
             x_actual = x_siguiente
+        
+        # Si completó todas las iteraciones sin otro estado, marcar como completado
+        if status == "max_iter" and criterio == "iteracion":
+            status = "iteraciones"
 
         latex_output = self._latex_secante(func_str, x0, x1, tol, max_iter, criterio, iteraciones, status)
         return iteraciones, latex_output
