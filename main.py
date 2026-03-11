@@ -6,6 +6,7 @@ from tkinter import ttk, filedialog, messagebox
 import os
 import shutil
 import subprocess
+import tempfile
 
 
 class MetodosNumericos:
@@ -622,13 +623,9 @@ class MetodosNumericosGUI:
         btns.grid(row=7, column=0, columnspan=2, sticky="ew", pady=(12, 0))
         btns.columnconfigure(0, weight=1)
         btns.columnconfigure(1, weight=1)
-        btns.columnconfigure(2, weight=1)
-        btns.columnconfigure(3, weight=1)
 
         ttk.Button(btns, text="Ejecutar", command=self._run).grid(row=0, column=0, sticky="ew")
-        ttk.Button(btns, text="Guardar .tex", command=self._save_tex).grid(row=0, column=1, sticky="ew", padx=8)
-        ttk.Button(btns, text="Generar PDF", command=self._save_pdf).grid(row=0, column=2, sticky="ew")
-        ttk.Button(btns, text="Limpiar", command=self._clear).grid(row=0, column=3, sticky="ew", padx=(8, 0))
+        ttk.Button(btns, text="Limpiar", command=self._clear).grid(row=0, column=1, sticky="ew", padx=(8, 0))
 
         out = ttk.Frame(self.root, padding=(12, 0, 12, 12))
         out.grid(row=1, column=0, sticky="nsew")
@@ -706,40 +703,10 @@ class MetodosNumericosGUI:
                 messagebox.showwarning("Atención",
                                        "No se generaron iteraciones (posible división por 0 o problema numérico).")
 
+            self._save_pdf()
+
         except Exception as e:
             messagebox.showerror("Error", str(e))
-
-    def _save_tex(self):
-        if not self._last_latex:
-            messagebox.showerror("Error", "No hay salida LaTeX para guardar. Primero ejecuta un método.")
-            return
-
-        path = filedialog.asksaveasfilename(
-            defaultextension=".tex",
-            filetypes=[("LaTeX", "*.tex"), ("Todos", "*")],
-            initialfile="resultado.tex",
-        )
-        if not path:
-            return
-
-        try:
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(self._last_latex)
-            messagebox.showinfo("OK", f"Archivo guardado en: {path}")
-        except Exception as e:
-            messagebox.showerror("Error", str(e))
-
-    def _open_file(self, path: str):
-        try:
-            if os.name == "nt":
-                os.startfile(path)  # type: ignore[attr-defined]
-            else:
-                opener = "xdg-open" if shutil.which("xdg-open") else None
-                if opener is None:
-                    return
-                subprocess.run([opener, path], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        except Exception:
-            return
 
     def _save_pdf(self):
         if not self._last_latex:
@@ -753,43 +720,44 @@ class MetodosNumericosGUI:
             )
             return
 
-        tex_path = filedialog.asksaveasfilename(
-            defaultextension=".tex",
-            filetypes=[("LaTeX", "*.tex"), ("Todos", "*")],
-            initialfile="resultado.tex",
-        )
-        if not tex_path:
-            return
-
         try:
-            with open(tex_path, "w", encoding="utf-8") as f:
-                f.write(self._last_latex)
-
-            out_dir = os.path.dirname(os.path.abspath(tex_path))
-            tex_filename = os.path.basename(tex_path)
-
-            proc = None
-            for _ in range(2):
-                proc = subprocess.run(
-                    ["pdflatex", "-interaction=nonstopmode", "-halt-on-error", tex_filename],
-                    cwd=out_dir,
-                    capture_output=True,
-                    text=True,
-                    check=False,
-                )
-                if proc.returncode != 0:
-                    break
-
-            pdf_path = os.path.splitext(tex_path)[0] + ".pdf"
-            if proc is None or proc.returncode != 0 or not os.path.exists(pdf_path):
-                stdout = "" if proc is None else proc.stdout
-                stderr = "" if proc is None else proc.stderr
-                msg = stdout[-2000:] + "\n" + stderr[-2000:]
-                messagebox.showerror("Error", "Falló la compilación LaTeX.\n\n" + msg)
+            pdf_path = filedialog.asksaveasfilename(
+                defaultextension=".pdf",
+                filetypes=[("PDF", "*.pdf"), ("Todos", "*")],
+                initialfile="resultado.pdf",
+            )
+            if not pdf_path:
                 return
 
+            with tempfile.TemporaryDirectory(prefix="mn_pdf_") as tmpdir:
+                tex_filename = "resultado.tex"
+                tex_path = os.path.join(tmpdir, tex_filename)
+                with open(tex_path, "w", encoding="utf-8") as f:
+                    f.write(self._last_latex)
+
+                proc = None
+                for _ in range(2):
+                    proc = subprocess.run(
+                        ["pdflatex", "-interaction=nonstopmode", "-halt-on-error", tex_filename],
+                        cwd=tmpdir,
+                        capture_output=True,
+                        text=True,
+                        check=False,
+                    )
+                    if proc.returncode != 0:
+                        break
+
+                tmp_pdf = os.path.join(tmpdir, "resultado.pdf")
+                if proc is None or proc.returncode != 0 or not os.path.exists(tmp_pdf):
+                    stdout = "" if proc is None else proc.stdout
+                    stderr = "" if proc is None else proc.stderr
+                    msg = stdout[-2000:] + "\n" + stderr[-2000:]
+                    messagebox.showerror("Error", "Falló la compilación LaTeX.\n\n" + msg)
+                    return
+
+                shutil.copyfile(tmp_pdf, pdf_path)
+
             messagebox.showinfo("OK", f"PDF generado en: {pdf_path}")
-            self._open_file(pdf_path)
         except Exception as e:
             messagebox.showerror("Error", str(e))
 

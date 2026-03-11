@@ -6,13 +6,13 @@
 \usepackage{longtable}
 \begin{document}
 
-\section*{Método de la Secante}
+\section*{Método de Aproximaciones Sucesivas (Punto Fijo)}
 
-\textbf{Función:} $f(x) = x^{3} - 2 x - 5$
+\textbf{Función:} $g(x) = 0.5 x + \frac{1.0}{x}$
 
-\textbf{Valores iniciales:} $x_0 = 2.0$, $x_1 = 3.0$
+\textbf{Valor inicial:} $x_0 = 1.0$
 
-\textbf{Tolerancia:} $\varepsilon = 0.9$
+\textbf{Tolerancia:} $\varepsilon = 1e-06$
 
 \textbf{Criterio de parada:} error
 
@@ -22,22 +22,25 @@
 
 \subsection*{Proceso iterativo}
 
-\begin{longtable}{|c|c|c|c|c|c|c|}
+\begin{longtable}{|c|c|c|c|}
 \hline
-\textbf{Iteración} & \textbf{$x_{i-1}$} & \textbf{$x_{i}$} & \textbf{$f(x_{i-1})$} & \textbf{$f(x_{i})$} & \textbf{$x_{i+1}$} & \textbf{Error} \\ \hline
+\textbf{Iteración} & \textbf{$x_{i}$} & \textbf{$x_{i+1}$} & \textbf{Error} \\ \hline
 \endfirsthead
 \hline
-\textbf{Iteración} & \textbf{$x_{i-1}$} & \textbf{$x_{i}$} & \textbf{$f(x_{i-1})$} & \textbf{$f(x_{i})$} & \textbf{$x_{i+1}$} & \textbf{Error} \\ \hline
+\textbf{Iteración} & \textbf{$x_{i}$} & \textbf{$x_{i+1}$} & \textbf{Error} \\ \hline
 \endhead
 \hline
 \endfoot
 \hline
 \endlastfoot
-1 & $2.000000$ & $3.000000$ & $-1.000000$ & $16.000000$ & $2.058824$ & $0.941176$ \\ \hline
-2 & $3.000000$ & $2.058824$ & $16.000000$ & $-0.390800$ & $2.081264$ & $0.022440$ \\ \hline
+1 & $1.000000$ & $1.500000$ & $0.500000$ \\ \hline
+2 & $1.500000$ & $1.416667$ & $0.083333$ \\ \hline
+3 & $1.416667$ & $1.414216$ & $0.002451$ \\ \hline
+4 & $1.414216$ & $1.414214$ & $0.000002$ \\ \hline
+5 & $1.414214$ & $1.414214$ & $0.000000$ \\ \hline
 \end{longtable}
 
-\textbf{Raíz aproximada:} $2.081264$
-\textbf{Error final:} $0.022440$
+\textbf{Último iterado:} $1.414214$
+\textbf{Error final:} $0.000000$
 
 \end{document}
