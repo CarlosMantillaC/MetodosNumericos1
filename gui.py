@@ -61,7 +61,8 @@ class NumericalMethodsGUI:
 
         # Variables de control para los widgets de la interfaz
         self.method_var = ctk.StringVar(value="punto_fijo")  # Método numérico seleccionado
-        self.function_var = ctk.StringVar(value="0.5*x+1.0/x")  # Función matemática
+        self.function_var = ctk.StringVar(value="sqrt(5*x - 4)")  # Función matemática
+        self.function_mode_var = ctk.StringVar(value="auto")  # Modo: auto (f(x)) o manual (g(x))
         self.x0_var = ctk.StringVar(value="1")  # Valor inicial x0
         self.x1_var = ctk.StringVar(value="2")  # Valor inicial x1 (para secante)
         self.tolerance_var = ctk.StringVar(value="1e-6")  # Tolerancia para convergencia
@@ -99,49 +100,82 @@ class NumericalMethodsGUI:
             control_frame,
             variable=self.method_var,
             values=["punto_fijo", "newton_raphson", "secante"],
-            width=200
+            width=200,
+            command=lambda choice: self.handle_method_change()
         )
         method_cb.grid(row=0, column=1, sticky="w", pady=5, padx=(10, 0))
+        
+        # También bind para el evento de cambio
         method_cb.bind("<<ComboboxSelected>>", lambda e: self.handle_method_change())
         
         # Función
         ctk.CTkLabel(control_frame, text="Función:", font=("Arial", 12, "bold")).grid(row=1, column=0, sticky="w", pady=5)
-        func_entry = ctk.CTkEntry(control_frame, textvariable=self.function_var, width=200)
-        func_entry.grid(row=1, column=1, sticky="w", pady=5, padx=(10, 0))
+        
+        # Frame para función y modo (solo visible para punto fijo)
+        function_frame = ctk.CTkFrame(control_frame)
+        function_frame.grid(row=2, column=0, columnspan=3, sticky="ew", pady=5)
+        
+        # Selector de modo (solo para punto fijo)
+        self.mode_label = ctk.CTkLabel(function_frame, text="Modo:", font=("Arial", 10, "bold"))
+        self.mode_label.grid(row=0, column=0, sticky="w", padx=5, pady=2)
+        
+        self.mode_cb = ctk.CTkComboBox(
+            function_frame,
+            variable=self.function_mode_var,
+            values=["auto", "manual"],
+            width=120,
+            command=lambda e: self.handle_function_mode_change()
+        )
+        self.mode_cb.grid(row=0, column=1, sticky="w", padx=5, pady=2)
+        
+        # Etiqueta de descripción del modo
+        self.mode_desc_label = ctk.CTkLabel(function_frame, text="", font=("Arial", 9, "italic"))
+        self.mode_desc_label.grid(row=0, column=2, sticky="w", padx=10, pady=2)
+        
+        # Campo de entrada de función
+        self.function_entry = ctk.CTkEntry(function_frame, textvariable=self.function_var, width=400)
+        self.function_entry.grid(row=1, column=0, columnspan=3, sticky="ew", pady=5, padx=5)
+        
+        # Etiqueta informativa para punto fijo
+        self.info_label = ctk.CTkLabel(control_frame, text="", font=("Arial", 10, "italic"))
+        self.info_label.grid(row=4, column=0, columnspan=3, sticky="w", pady=2)
         
         # x0
-        ctk.CTkLabel(control_frame, text="x0:", font=("Arial", 12, "bold")).grid(row=2, column=0, sticky="w", pady=5)
+        ctk.CTkLabel(control_frame, text="x0:", font=("Arial", 12, "bold")).grid(row=5, column=0, sticky="w", pady=5)
         x0_entry = ctk.CTkEntry(control_frame, textvariable=self.x0_var, width=200)
-        x0_entry.grid(row=2, column=1, sticky="w", pady=5, padx=(10, 0))
+        x0_entry.grid(row=5, column=1, sticky="w", pady=5, padx=(10, 0))
         
         # x1
-        ctk.CTkLabel(control_frame, text="x1 (secante):", font=("Arial", 12, "bold")).grid(row=3, column=0, sticky="w", pady=5)
+        ctk.CTkLabel(control_frame, text="x1 (secante):", font=("Arial", 12, "bold")).grid(row=6, column=0, sticky="w", pady=5)
         self.x1_entry = ctk.CTkEntry(control_frame, textvariable=self.x1_var, width=200)
-        self.x1_entry.grid(row=3, column=1, sticky="w", pady=5, padx=(10, 0))
+        self.x1_entry.grid(row=6, column=1, sticky="w", pady=5, padx=(10, 0))
+        
+        # Inicialmente deshabilitar x1 (solo para secante)
+        self.x1_entry.configure(state="disabled")
         
         # Tolerancia
-        ctk.CTkLabel(control_frame, text="Tolerancia (ε):", font=("Arial", 12, "bold")).grid(row=4, column=0, sticky="w", pady=5)
+        ctk.CTkLabel(control_frame, text="Tolerancia (ε):", font=("Arial", 12, "bold")).grid(row=7, column=0, sticky="w", pady=5)
         tol_entry = ctk.CTkEntry(control_frame, textvariable=self.tolerance_var, width=200)
-        tol_entry.grid(row=4, column=1, sticky="w", pady=5, padx=(10, 0))
+        tol_entry.grid(row=7, column=1, sticky="w", pady=5, padx=(10, 0))
         
         # Máximo de iteraciones
-        ctk.CTkLabel(control_frame, text="Máx. iteraciones:", font=("Arial", 12, "bold")).grid(row=5, column=0, sticky="w", pady=5)
+        ctk.CTkLabel(control_frame, text="Máx. iteraciones:", font=("Arial", 12, "bold")).grid(row=8, column=0, sticky="w", pady=5)
         max_iter_entry = ctk.CTkEntry(control_frame, textvariable=self.max_iterations_var, width=200)
-        max_iter_entry.grid(row=5, column=1, sticky="w", pady=5, padx=(10, 0))
+        max_iter_entry.grid(row=8, column=1, sticky="w", pady=5, padx=(10, 0))
         
         # Criterio de parada
-        ctk.CTkLabel(control_frame, text="Criterio de parada:", font=("Arial", 12, "bold")).grid(row=6, column=0, sticky="w", pady=5)
+        ctk.CTkLabel(control_frame, text="Criterio de parada:", font=("Arial", 12, "bold")).grid(row=9, column=0, sticky="w", pady=5)
         criterio_cb = ctk.CTkComboBox(
             control_frame,
             variable=self.stopping_criterion_var,
             values=["error", "iteracion"],
             width=200
         )
-        criterio_cb.grid(row=6, column=1, sticky="w", pady=5, padx=(10, 0))
+        criterio_cb.grid(row=9, column=1, sticky="w", pady=5, padx=(10, 0))
         
         # Botones
         button_frame = ctk.CTkFrame(control_frame)
-        button_frame.grid(row=7, column=0, columnspan=2, pady=20, sticky="ew")
+        button_frame.grid(row=10, column=0, columnspan=2, pady=20, sticky="ew")
         
         run_button = ctk.CTkButton(
             button_frame,
@@ -173,6 +207,34 @@ class NumericalMethodsGUI:
         
         self.last_latex = ""
 
+    def handle_function_mode_change(self):
+        """
+        Maneja el cambio entre modo automático y manual para el método de punto fijo.
+        
+        Modo automático: Ingresa f(x) y el software lo convierte a g(x)
+        Modo manual: Ingresa directamente g(x) para el método de punto fijo
+        """
+        mode = self.function_mode_var.get()
+        method = self.method_var.get()
+        
+        if method == "punto_fijo":
+            if mode == "auto":
+                self.mode_desc_label.configure(text="Ingresa f(x) y el software la convertirá a g(x)")
+                self.info_label.configure(
+                    text="💡 Ingresa f(x) y el software la convertirá automáticamente a g(x) para el método de punto fijo"
+                )
+                # Ejemplo de función f(x)
+                if self.function_var.get().strip() in ("", "0.5*(x + 2/x)"):
+                    self.function_var.set("sqrt(5*x - 4)")
+            else:  # manual
+                self.mode_desc_label.configure(text="Ingresa directamente g(x) para el método de punto fijo")
+                self.info_label.configure(
+                    text="💡 Ingresa directamente la función g(x) en formato x = g(x)"
+                )
+                # Ejemplo de función g(x)
+                if self.function_var.get().strip() in ("", "sqrt(5*x - 4)"):
+                    self.function_var.set("0.5*(x + 2/x)")
+
     def handle_method_change(self):
         """
         Maneja el cambio de método numérico seleccionado.
@@ -185,30 +247,77 @@ class NumericalMethodsGUI:
            - Otros métodos: deshabilita x1 (solo necesitan un valor inicial)
         
         2. Ajusta automáticamente la función y valores iniciales según el método:
-           - Punto fijo: usa función g(x) = 0.5*(x + 2/x), x0 = 1
-           - Newton-Raphson/Secante: usa función f(x) = x^2 - 2, x0 = 1
+           - Punto fijo: usa función f(x) original, el software la convierte a g(x)
+           - Newton-Raphson/Secante: usa función f(x) directamente
            - Secante adicionalmente: x1 = 2
         
-        3. Proporciona valores por defecto apropiados para cada método
+        3. Muestra información útil sobre el método seleccionado
         """
         method = self.method_var.get()
         
         # Controlar la visibilidad del campo x1 según el método seleccionado
         if method == "secante":
             self.x1_entry.configure(state="normal")  # Habilitar para secante
+            # Forzar actualización de la interfaz
+            self.x1_entry.update()
         else:
             self.x1_entry.configure(state="disabled")  # Deshabilitar para otros métodos
+            # Forzar actualización de la interfaz
+            self.x1_entry.update()
+
+        # Actualizar etiqueta informativa según el método
+        if method == "punto_fijo":
+            # Mostrar controles de modo para punto fijo
+            self.mode_label.grid()
+            self.mode_desc_label.grid()
+            self.mode_cb.grid()  # Asegurar que el combobox también se muestre
+            
+            # Actualizar según el modo actual
+            self.handle_function_mode_change()
+            
+            # Forzar actualización del frame
+            function_frame = self.mode_cb.master
+            function_frame.update()
+            
+        elif method == "newton_raphson":
+            # Ocultar completamente controles de modo para otros métodos
+            self.mode_label.grid_remove()
+            self.mode_desc_label.grid_remove()
+            self.mode_cb.grid_remove()  # Ocultar también el combobox
+            # Forzar actualización del frame
+            function_frame = self.mode_cb.master
+            function_frame.update()
+            self.info_label.configure(
+                text="💡 Ingresa f(x) directamente. El método calculará la derivada automáticamente."
+            )
+        elif method == "secante":
+            # Ocultar completamente controles de modo para otros métodos
+            self.mode_label.grid_remove()
+            self.mode_desc_label.grid_remove()
+            self.mode_cb.grid_remove()  # Ocultar también el combobox
+            # Forzar actualización del frame
+            function_frame = self.mode_cb.master
+            function_frame.update()
+            self.info_label.configure(
+                text="💡 Ingresa f(x) directamente. El método no requiere derivada."
+            )
+        else:
+            # Ocultar completamente controles de modo
+            self.mode_label.grid_remove()
+            self.mode_desc_label.grid_remove()
+            self.mode_cb.grid_remove()  # Ocultar también el combobox
+            self.info_label.configure(text="")
 
         # Ajustar automáticamente la función según el método
         if method == "punto_fijo":
-            # Para punto fijo, usar una función de convergencia garantizada para √2
-            if self.function_var.get().strip() in ("", "x**2 - 2", "x**2-2"):
-                self.function_var.set("0.5*(x + 2/x)")  # g(x) = 0.5*(x + 2/x)
+            # Para punto fijo, ahora aceptamos cualquier función f(x)
+            if self.function_var.get().strip() == "":
+                self.function_var.set("sqrt(5*x - 4)")  # Ejemplo de función
             if self.x0_var.get().strip() == "":
                 self.x0_var.set("1")
         else:
-            # Para Newton-Raphson y secante, usar la función original
-            if self.function_var.get().strip() in ("", "0.5*(x + 2/x)"):
+            # Para Newton-Raphson y secante, usar funciones estándar
+            if self.function_var.get().strip() == "":
                 self.function_var.set("x**2 - 2")  # f(x) = x^2 - 2
             if self.x0_var.get().strip() == "":
                 self.x0_var.set("1")
@@ -262,27 +371,57 @@ class NumericalMethodsGUI:
             return
 
         try:
+            method = self.method_var.get()
             x0 = float(self.x0_var.get())
             tol = float(self.tolerance_var.get())
             max_iter = int(float(self.max_iterations_var.get()))
             stopping_criterion = self.stopping_criterion_var.get().strip()
-
-            if stopping_criterion not in ("error", "iteracion"):
-                raise ValueError("Criterio debe ser 'error' o 'iteracion'")
-
-            method = self.method_var.get()
-            if method == "punto_fijo":
-                iterations, latex = self.iterative_methods.punto_fijo(func_str, x0, tol, max_iter, stopping_criterion)
-            elif method == "newton_raphson":
-                iterations, latex = self.derivative_methods.newton_raphson(func_str, x0, tol, max_iter, stopping_criterion)
-            elif method == "secante":
-                x1 = float(self.x1_var.get())
-                iterations, latex = self.secant_method.secante(func_str, x0, x1, tol, max_iter, stopping_criterion)
-            else:
-                raise ValueError("Método no soportado")
-
-            self.last_latex = latex
+            
+            # Limpiar salida anterior
             self.output.delete("1.0", "end")
+            
+            # Ejecutar el método numérico según la selección
+            if method == "punto_fijo":
+                # Verificar si es modo automático o manual
+                mode = self.function_mode_var.get()
+                
+                if mode == "auto":
+                    # Modo automático: convertir f(x) a g(x)
+                    iterations, latex = self.iterative_methods.punto_fijo(
+                        func_str, x0, tol, max_iter, stopping_criterion
+                    )
+                else:  # manual
+                    # Modo manual: usar directamente g(x)
+                    iterations, latex = self.iterative_methods.punto_fijo_manual(
+                        func_str, x0, tol, max_iter, stopping_criterion
+                    )
+                    
+            elif method == "newton_raphson":
+                iterations, latex = self.derivative_methods.newton_raphson(
+                    func_str, x0, tol, max_iter, stopping_criterion
+                )
+                
+            elif method == "secante":
+                # Validar que x1 no esté vacío
+                x1_str = self.x1_var.get().strip()
+                if not x1_str:
+                    messagebox.showerror("Error", "El campo x1 no puede estar vacío para el método de la secante")
+                    return
+                
+                try:
+                    x1 = float(x1_str)
+                except ValueError:
+                    messagebox.showerror("Error", f"El valor de x1 '{x1_str}' no es un número válido")
+                    return
+                
+                iterations, latex = self.secant_method.secante(
+                    func_str, x0, x1, tol, max_iter, stopping_criterion
+                )
+            
+            # Almacenar el código LaTeX para uso posterior
+            self.last_latex = latex
+            
+            # Mostrar el código LaTeX en el área de salida
             self.output.insert("1.0", latex)
 
             if not iterations:

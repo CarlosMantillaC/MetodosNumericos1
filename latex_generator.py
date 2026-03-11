@@ -338,10 +338,185 @@ class LaTeXReportGenerator:
                 f"${self.format_number_for_latex(iteration['error'], 'float')}$ \\\\ \\hline\n"
             )
 
-        # Agregar resumen de resultados
+        # Agregar resumen de resultados si hay iteraciones
         if iterations:
             latex += f"\\end{{longtable}}\n\n"
-            latex += f"\\textbf{{Raíz aproximada:}} ${self.format_number_for_latex(iterations[-1]['x_siguiente'], 'float')}$\n"
+            latex += f"\\textbf{{Último iterado:}} ${self.format_number_for_latex(iterations[-1]['x_siguiente'], 'float')}$\n"
+            latex += f"\\textbf{{Error final:}} ${self.format_number_for_latex(iterations[-1]['error'], 'float')}$\n"
+
+        # Cerrar el documento LaTeX
+        latex += "\n\\end{document}"
+        return latex
+    
+    def generate_fixed_point_latex_manual(self, g_func_str: str, x0: float, tol: float, max_iter: int,
+                                           criterio: str, iterations: List, status: str) -> str:
+        """
+        Genera informe LaTeX para el método de punto fijo en modo manual.
+        
+        El informe incluye:
+        - Título y descripción del método
+        - Función g(x) ingresada directamente por el usuario
+        - Parámetros de configuración
+        - Tabla con iteraciones (x_i, x_{i+1}, error)
+        - Resumen de resultados
+        
+        Args:
+            g_func_str (str): Función g(x) directa ingresada por el usuario
+            x0 (float): Valor inicial
+            tol (float): Tolerancia
+            max_iter (int): Máximo de iteraciones
+            criterio (str): Criterio de parada
+            iterations (List): Lista de iteraciones con datos
+            status (str): Estado final del proceso
+            
+        Returns:
+            str: Documento LaTeX completo
+        """
+        # Convertir la función a formato LaTeX
+        g_latex = sp.latex(sp.sympify(self.numerical_methods.normalize_function_string(g_func_str)))
+        
+        # Iniciar el documento LaTeX
+        latex = f"""
+\\documentclass{{article}}
+\\usepackage{{amsmath}}
+\\usepackage{{array}}
+\\usepackage{{booktabs}}
+\\usepackage{{longtable}}
+\\begin{{document}}
+
+\\section*{{Método de Aproximaciones Sucesivas (Punto Fijo) - Modo Manual}}
+
+\\textbf{{Función ingresada:}} $g(x) = {g_latex}$
+
+\\textbf{{Modo:}} Manual (función g(x) ingresada directamente)
+
+\\textbf{{Valor inicial:}} $x_0 = {x0}$
+
+\\textbf{{Tolerancia:}} $\\varepsilon = {tol}$
+
+\\textbf{{Criterio de parada:}} {criterio}
+
+\\textbf{{Máximo de iteraciones:}} {max_iter}
+
+\\textbf{{Estado:}} {status}
+
+\\subsection*{{Proceso iterativo}}
+
+\\begin{{longtable}}{{|c|c|c|c|}}
+\\hline
+\\textbf{{Iteración}} & \\textbf{{$x_{{i}}$}} & \\textbf{{$x_{{i+1}}$}} & \\textbf{{Error}} \\\\ \\hline
+\\endfirsthead
+\\hline
+\\textbf{{Iteración}} & \\textbf{{$x_{{i}}$}} & \\textbf{{$x_{{i+1}}$}} & \\textbf{{Error}} \\\\ \\hline
+\\endhead
+\\hline
+\\endfoot
+\\hline
+\\endlastfoot
+"""
+
+        # Agregar cada iteración a la tabla
+        for iteration in iterations:
+            latex += (
+                f"{iteration['iter']} & ${self.format_number_for_latex(iteration['x_actual'], 'float')}$ & "
+                f"${self.format_number_for_latex(iteration['x_siguiente'], 'float')}$ & "
+                f"${self.format_number_for_latex(iteration['error'], 'float')}$ \\\\ \\hline\n"
+            )
+
+        # Agregar resumen de resultados si hay iteraciones
+        if iterations:
+            latex += f"\\end{{longtable}}\n\n"
+            latex += f"\\textbf{{Último iterado:}} ${self.format_number_for_latex(iterations[-1]['x_siguiente'], 'float')}$\n"
+            latex += f"\\textbf{{Error final:}} ${self.format_number_for_latex(iterations[-1]['error'], 'float')}$\n"
+
+        # Cerrar el documento LaTeX
+        latex += "\n\\end{document}"
+        return latex
+    
+    def generate_fixed_point_latex_with_conversion(self, original_func: str, converted_func: str, x0: float, tol: float, max_iter: int,
+                                                   criterio: str, iterations: List, status: str) -> str:
+        """
+        Genera informe LaTeX para el método de punto fijo mostrando la conversión de f(x) a g(x).
+        
+        El informe incluye:
+        - Título y descripción del método
+        - Función original f(x) y función convertida g(x)
+        - Explicación de la estrategia de conversión utilizada
+        - Parámetros de configuración
+        - Tabla con iteraciones (x_i, x_{i+1}, error)
+        - Resumen de resultados
+        
+        Args:
+            original_func (str): Función f(x) original ingresada por el usuario
+            converted_func (str): Función g(x) convertida para el método
+            x0 (float): Valor inicial
+            tol (float): Tolerancia
+            max_iter (int): Máximo de iteraciones
+            criterio (str): Criterio de parada
+            iterations (List): Lista de iteraciones con datos
+            status (str): Estado final del proceso
+            
+        Returns:
+            str: Documento LaTeX completo
+        """
+        # Convertir ambas funciones a formato LaTeX
+        original_latex = sp.latex(sp.sympify(self.numerical_methods.normalize_function_string(original_func)))
+        converted_latex = sp.latex(sp.sympify(self.numerical_methods.normalize_function_string(converted_func)))
+        
+        # Iniciar el documento LaTeX con información de conversión
+        latex = f"""
+\\documentclass{{article}}
+\\usepackage{{amsmath}}
+\\usepackage{{array}}
+\\usepackage{{booktabs}}
+\\usepackage{{longtable}}
+\\begin{{document}}
+
+\\section*{{Método de Aproximaciones Sucesivas (Punto Fijo)}}
+
+\\textbf{{Función original:}} $f(x) = {original_latex}$
+
+\\textbf{{Función convertida:}} $g(x) = {converted_latex}$
+
+\\textbf{{Conversión automática:}} $f(x) = 0 \\rightarrow x = g(x)$
+
+\\textbf{{Valor inicial:}} $x_0 = {x0}$
+
+\\textbf{{Tolerancia:}} $\\varepsilon = {tol}$
+
+\\textbf{{Criterio de parada:}} {criterio}
+
+\\textbf{{Máximo de iteraciones:}} {max_iter}
+
+\\textbf{{Estado:}} {status}
+
+\\subsection*{{Proceso iterativo}}
+
+\\begin{{longtable}}{{|c|c|c|c|}}
+\\hline
+\\textbf{{Iteración}} & \\textbf{{$x_{{i}}$}} & \\textbf{{$x_{{i+1}}$}} & \\textbf{{Error}} \\\\ \\hline
+\\endfirsthead
+\\hline
+\\textbf{{Iteración}} & \\textbf{{$x_{{i}}$}} & \\textbf{{$x_{{i+1}}$}} & \\textbf{{Error}} \\\\ \\hline
+\\endhead
+\\hline
+\\endfoot
+\\hline
+\\endlastfoot
+"""
+
+        # Agregar cada iteración a la tabla
+        for iteration in iterations:
+            latex += (
+                f"{iteration['iter']} & ${self.format_number_for_latex(iteration['x_actual'], 'float')}$ & "
+                f"${self.format_number_for_latex(iteration['x_siguiente'], 'float')}$ & "
+                f"${self.format_number_for_latex(iteration['error'], 'float')}$ \\\\ \\hline\n"
+            )
+
+        # Agregar resumen de resultados si hay iteraciones
+        if iterations:
+            latex += f"\\end{{longtable}}\n\n"
+            latex += f"\\textbf{{Último iterado:}} ${self.format_number_for_latex(iterations[-1]['x_siguiente'], 'float')}$\n"
             latex += f"\\textbf{{Error final:}} ${self.format_number_for_latex(iterations[-1]['error'], 'float')}$\n"
 
         # Cerrar el documento LaTeX
